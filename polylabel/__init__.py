@@ -1,5 +1,9 @@
 from math import sqrt
+from itertools import count
 import time
+
+# Counter is used as tie breaker for the priority queue if Cells have same priority
+counter = count()
 
 try:
     # Python3
@@ -9,6 +13,13 @@ except ImportError:
     # Python2
     from Queue import PriorityQueue
     inf = float("inf")
+
+
+def frange(x, y, jump):
+    """Range, but for floating point numbers"""
+    while x < y:
+        yield x
+        x += jump
 
 
 def _point_to_polygon_distance(x, y, polygon):
@@ -111,10 +122,10 @@ def polylabel(polygon, precision=1.0, debug=False):
         return [min_x, min_y]
 
     # cover polygon with initial cells
-    for x in range(min_x, max_x, int(cell_size)):
-        for y in range(min_y, max_y, int(cell_size)):
+    for x in frange(min_x, max_x, cell_size):
+        for y in frange(min_y, max_y, cell_size):
             c = Cell(x + h, y + h, h, polygon)
-            cell_queue.put((-c.max, time.time(), c))
+            cell_queue.put((-c.max, next(counter), c))
 
     best_cell = _get_centroid_cell(polygon)
 
@@ -130,24 +141,25 @@ def polylabel(polygon, precision=1.0, debug=False):
             best_cell = cell
 
             if debug:
-                print('found best {} after {} probes'.format(round(1e4 * cell.d) / 1e4, num_of_probes))
+                print('found best {} after {} probes'.format(
+                    round(1e4 * cell.d) / 1e4, num_of_probes))
 
         if cell.max - best_cell.d <= precision:
             continue
 
         h = cell.h / 2
         c = Cell(cell.x - h, cell.y - h, h, polygon)
-        cell_queue.put((-c.max, time.time(), c))
+        cell_queue.put((-c.max, next(counter), c))
         c = Cell(cell.x + h, cell.y - h, h, polygon)
-        cell_queue.put((-c.max, time.time(), c))
+        cell_queue.put((-c.max, next(counter), c))
         c = Cell(cell.x - h, cell.y + h, h, polygon)
-        cell_queue.put((-c.max, time.time(), c))
+        cell_queue.put((-c.max, next(counter), c))
         c = Cell(cell.x + h, cell.y + h, h, polygon)
-        cell_queue.put((-c.max, time.time(), c))
+        cell_queue.put((-c.max, next(counter), c))
         num_of_probes += 4
 
     if debug:
         print('num probes: {}'.format(num_of_probes))
         print('best distance: {}'.format(best_cell.d))
 
-    return [best_cell.x, best_cell.y]
+    return ([best_cell.x, best_cell.y], best_cell.d)
